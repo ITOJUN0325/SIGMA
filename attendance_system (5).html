@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>勤怠管理システム</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#F8F7F4;--bg2:#FFFFFF;--bg3:#F0EEE9;--text:#1A1A18;--text2:#5F5E5A;--text3:#9B9A95;--border:#E2E0DA;--border2:#C8C6BF;--blue:#185FA5;--blue-bg:#E6F1FB;--green:#0F6E56;--green-bg:#E1F5EE;--red:#A32D2D;--red-bg:#FCEBEB;--amber:#854F0B;--amber-bg:#FAEEDA;--purple:#534AB7;--radius:8px;--radius-lg:12px;}
+body{font-family:'Hiragino Sans','Yu Gothic',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;}
+button{font-family:inherit;font-size:13px;padding:6px 14px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg2);color:var(--text);cursor:pointer;}
+button:hover{background:var(--bg3);}
+button.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
+button.primary:hover{background:#0C447C;}
+input,select{font-family:inherit;font-size:13px;padding:7px 10px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg2);color:var(--text);width:100%;outline:none;}
+input:focus,select:focus{border-color:var(--blue);}
+label{font-size:12px;color:var(--text2);display:block;margin-bottom:4px;}
+.app{max-width:980px;margin:0 auto;padding:1rem;}
+.login-wrap{max-width:380px;margin:4rem auto;background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:2rem;}
+.login-title{font-size:22px;font-weight:600;margin-bottom:4px;}
+.login-sub{font-size:13px;color:var(--text2);margin-bottom:1.5rem;}
+.login-error{font-size:13px;color:var(--red);background:var(--red-bg);border-radius:var(--radius);padding:8px 12px;margin-bottom:12px;display:none;}
+.role-btns{display:flex;gap:8px;margin-bottom:1.2rem;}
+.role-btn{flex:1;padding:10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);cursor:pointer;font-size:13px;color:var(--text2);}
+.role-btn.active{border-color:var(--blue);background:var(--blue-bg);color:var(--blue);font-weight:500;}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;padding-bottom:10px;border-bottom:0.5px solid var(--border);}
+.header-title{font-size:16px;font-weight:600;}
+.header-right{display:flex;align-items:center;gap:10px;}
+.user-badge{font-size:12px;color:var(--text2);}
+.tab-bar{display:flex;gap:0;margin-bottom:1.5rem;border-bottom:0.5px solid var(--border);flex-wrap:wrap;}
+.tab{font-size:12px;padding:8px 12px;border:none;background:none;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;}
+.tab.active{color:var(--text);border-bottom:2px solid var(--blue);font-weight:500;}
+.section{display:none;}.section.active{display:block;}
+.card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1rem;}
+.sec-title{font-size:15px;font-weight:600;margin-bottom:1rem;}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:1rem;}
+.stat{background:var(--bg3);border-radius:var(--radius);padding:12px;text-align:center;}
+.stat-num{font-size:18px;font-weight:600;}.stat-lbl{font-size:11px;color:var(--text2);margin-top:2px;}
+.badge{font-size:11px;padding:2px 9px;border-radius:20px;display:inline-block;white-space:nowrap;}
+.b-in{background:var(--green-bg);color:var(--green);}
+.b-pend{background:var(--amber-bg);color:var(--amber);}.b-none{background:var(--bg3);color:var(--text2);}
+.b-ok{background:var(--green-bg);color:var(--green);}.b-warn{background:var(--amber-bg);color:var(--amber);}.b-over{background:var(--red-bg);color:var(--red);}
+.b-approved{background:var(--green-bg);color:var(--green);}.b-rejected{background:var(--red-bg);color:var(--red);}.b-waiting{background:var(--amber-bg);color:var(--amber);}
+.divider{border:none;border-top:0.5px solid var(--border);margin:1rem 0;}
+.del-btn{border:none;background:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0 4px;line-height:1;}
+.del-btn:hover{color:var(--red);}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{font-size:11px;font-weight:500;color:var(--text2);text-align:left;padding:6px 8px;border-bottom:0.5px solid var(--border);white-space:nowrap;}
+td{padding:8px;border-bottom:0.5px solid var(--border);color:var(--text);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+.bar-wrap{background:var(--bg3);border-radius:4px;height:8px;overflow:hidden;flex:1;}
+.bar-fill{height:8px;border-radius:4px;}
+.cost-meter{display:flex;align-items:center;gap:8px;}
+.cost-pct{font-size:12px;min-width:36px;text-align:right;color:var(--text2);}
+.emp-chip{display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border:0.5px solid var(--border);border-radius:999px;padding:3px 10px 3px 4px;font-size:12px;margin:2px;}
+.avatar{width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;}
+.msg{font-size:13px;color:var(--text2);padding:1.5rem 0;text-align:center;}
+.add-tag-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.month-filter{display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap;}
+.alert-row{padding:8px 12px;border-radius:var(--radius);margin-bottom:8px;font-size:13px;}
+.alert-over{background:var(--red-bg);color:#791F1F;border:0.5px solid #F09595;}
+.alert-warn{background:var(--amber-bg);color:#633806;border:0.5px solid #FAC775;}
+.unit{font-size:12px;color:var(--text2);margin-left:2px;}
+.btn-sm{font-size:12px;padding:4px 10px;}
+.exp-card{border:0.5px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:10px;}
+.exp-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.exp-meta{font-size:12px;color:var(--text2);margin-top:2px;}
+.exp-amount{font-size:18px;font-weight:600;}
+.exp-actions{display:flex;gap:6px;margin-top:8px;}
+.btn-approve{background:var(--green-bg);color:var(--green);border:0.5px solid #5DCAA5;font-size:12px;padding:4px 12px;border-radius:var(--radius);cursor:pointer;}
+.btn-approve:hover{background:#9FE1CB;}
+.btn-reject{background:var(--red-bg);color:var(--red);border:0.5px solid #F09595;font-size:12px;padding:4px 12px;border-radius:var(--radius);cursor:pointer;}
+.category-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;}
+/* カレンダー */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+.cal-month-label{font-size:16px;font-weight:600;}
+.cal-grid-header{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:1rem;}
+.cal-dow{font-size:11px;text-align:center;padding:4px 0;font-weight:500;}
+.cal-dow.sun{color:#C0392B;}.cal-dow.sat{color:#2980B9;}.cal-dow.wkd{color:var(--text2);}
+.cal-day{min-height:72px;border:0.5px solid var(--border);border-radius:var(--radius);padding:4px;cursor:pointer;background:var(--bg2);transition:.1s;}
+.cal-day:hover{border-color:var(--blue);background:var(--blue-bg);}
+.cal-day.today{border-color:var(--blue);border-width:1.5px;}
+.cal-day.selected{border-color:var(--blue);border-width:2px;background:var(--blue-bg);}
+.cal-day.empty{background:none;border-color:transparent;cursor:default;}.cal-day.empty:hover{background:none;border-color:transparent;}
+.cal-day.is-sun{background:#FFF5F5;}.cal-day.is-sat{background:#F0F6FF;}
+.cal-day.is-holiday{background:#FFF0F0;}
+.cal-day.has-deadline{border:2px solid #E74C3C !important;box-shadow:0 0 0 1px #F5A9A9;}
+.cal-day-num{font-size:12px;margin-bottom:2px;font-weight:500;}
+.cal-day.is-sun .cal-day-num{color:#C0392B;}
+.cal-day.is-sat .cal-day-num{color:#2980B9;}
+.cal-day.is-holiday .cal-day-num,.cal-day.has-deadline .cal-day-num{color:#E74C3C;}
+.cal-day.today .cal-day-num{background:var(--blue);color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;}
+.holiday-label{font-size:9px;color:#C0392B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px;}
+.deadline-label{font-size:9px;color:#E74C3C;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px;background:#FFEBEB;border-radius:2px;padding:0 3px;}
+.cal-event{font-size:10px;padding:1px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cal-more{font-size:10px;color:var(--text2);padding:1px 4px;}
+.event-panel{background:var(--bg3);border-radius:var(--radius);padding:12px;margin-bottom:1rem;}
+.event-panel-title{font-size:13px;font-weight:600;margin-bottom:10px;}
+.event-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border);font-size:13px;}
+.event-item:last-child{border-bottom:none;}
+.event-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.event-del{margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;line-height:1;}
+.event-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+.event-form-full{grid-column:1/-1;}
+.cal-legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem;align-items:center;}
+.cal-legend-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);}
+/* チームカレンダー */
+.team-day-panel{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-top:0;}
+.team-day-title{font-size:15px;font-weight:600;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;}
+.team-day-close{font-size:18px;cursor:pointer;color:var(--text3);background:none;border:none;padding:0 4px;line-height:1;}
+.member-section{margin-bottom:14px;}
+.member-header-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:var(--radius);margin-bottom:6px;}
+.member-name{font-size:13px;font-weight:600;}
+.member-no-ev{font-size:12px;color:var(--text3);padding:4px 10px;}
+.ev-detail-item{display:flex;align-items:flex-start;gap:10px;padding:6px 10px;border-left:3px solid transparent;border-radius:0 var(--radius) var(--radius) 0;margin-bottom:4px;}
+.ev-detail-body{flex:1;}
+.cal-hint{font-size:12px;color:var(--text2);text-align:center;margin-bottom:8px;}
+.team-card{border:0.5px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:10px;}
+.team-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.team-name{font-size:14px;font-weight:600;}
+.team-members{display:flex;flex-wrap:wrap;gap:4px;}
+.member-tag{display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:0.5px solid var(--border);border-radius:999px;padding:2px 8px;font-size:12px;}
+.admin-filter{display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap;}
+.admin-filter select{width:auto;}
+.highlight-row{background:var(--blue-bg)!important;}
+.deadline-banner{padding:10px 14px;border-radius:var(--radius);margin-bottom:8px;font-size:13px;}
+.deadline-over{background:var(--red-bg);color:#791F1F;border:0.5px solid #F09595;}
+.deadline-near{background:var(--amber-bg);color:#633806;border:0.5px solid #FAC775;}
+.proj-add-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr 1fr 1fr 1fr;gap:6px;align-items:end;margin-top:10px;}
+.sync-indicator{font-size:11px;color:var(--text3);margin-left:8px;}
+.notice{font-size:12px;color:var(--text2);padding:8px 12px;background:var(--bg3);border-radius:var(--radius);margin-bottom:12px;}
+
+/* ★★★ タイムスケジュール ★★★ */
+.ts-wrap{display:flex;gap:12px;margin-bottom:1rem;}
+.ts-left{width:100%;}
+.ts-date-nav{display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap;}
+.ts-date-label{font-size:16px;font-weight:600;}
+.ts-summary{display:flex;gap:12px;flex-wrap:wrap;background:var(--bg3);border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;font-size:13px;align-items:center;}
+.ts-summary-item{display:flex;align-items:center;gap:6px;}
+.ts-progress-bar{height:10px;border-radius:5px;background:var(--bg3);border:0.5px solid var(--border);overflow:hidden;flex:1;min-width:120px;}
+.ts-progress-fill{height:100%;border-radius:5px;background:var(--blue);}
+.ts-grid-wrap{display:flex;gap:0;border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.ts-axis{width:54px;flex-shrink:0;background:var(--bg3);border-right:0.5px solid var(--border);}
+.ts-axis-cell{height:40px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:11px;color:var(--text2);border-bottom:0.5px solid var(--border);}
+.ts-axis-cell:last-child{border-bottom:none;}
+.ts-slots{flex:1;position:relative;}
+.ts-slot{height:40px;border-bottom:0.5px solid var(--border);cursor:pointer;transition:background .1s;position:relative;}
+.ts-slot:last-child{border-bottom:none;}
+.ts-slot:nth-child(odd){background:var(--bg2);}
+.ts-slot:nth-child(even){background:#FAFAF8;}
+.ts-slot:hover{background:var(--blue-bg);}
+.ts-slot.sel-start,.ts-slot.sel-hover{background:#D4E6F8;}
+.ts-slot-label{position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text3);pointer-events:none;}
+.ts-block{position:absolute;left:4px;right:4px;border-radius:5px;font-size:11px;padding:3px 8px;cursor:pointer;overflow:hidden;display:flex;align-items:center;gap:4px;z-index:5;box-shadow:0 1px 3px rgba(0,0,0,.1);}
+.ts-block-text{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ts-block-del{background:none;border:none;cursor:pointer;font-size:14px;line-height:1;padding:0;opacity:.7;flex-shrink:0;}
+.ts-block-del:hover{opacity:1;}
+.ts-submitted{pointer-events:none;opacity:.85;}
+/* モーダル */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;}
+.modal{background:var(--bg2);border-radius:var(--radius-lg);padding:1.5rem;width:min(400px,92vw);box-shadow:0 8px 32px rgba(0,0,0,.2);}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:1rem;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem;}
+.ts-submitted-banner{background:var(--green-bg);color:var(--green);border:0.5px solid #5DCAA5;border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;font-size:13px;display:flex;justify-content:space-between;align-items:center;}
+</style>
+</head>
+<body>
+<div class="app">
+<!-- ログイン画面 -->
+<div id="login-screen">
+  <div class="login-wrap">
+    <div class="login-title">勤怠管理システム</div>
+    <div class="login-sub">ログインしてください</div>
+    <div class="login-error" id="login-error"></div>
+    <div style="margin-bottom:8px;"><label>ログイン区分</label></div>
+    <div class="role-btns">
+      <button class="role-btn active" id="role-emp-btn" onclick="selectRole('emp')">社員</button>
+      <button class="role-btn" id="role-admin-btn" onclick="selectRole('admin')">管理者</button>
+    </div>
+    <div id="emp-select-wrap"><div class="field"><label>社員名を選択</label><select id="login-emp-sel"><option value="">-- 選択してください --</option></select></div></div>
+    <div id="admin-pass-wrap" style="display:none;"><div class="field"><label>管理者パスワード</label><input type="password" id="admin-pass" placeholder="パスワードを入力..."/></div></div>
+    <button class="primary" onclick="doLogin()" style="width:100%;margin-top:8px;">ログイン</button>
+  </div>
+</div>
+
+<!-- メイン画面 -->
+<div id="main-screen" style="display:none;">
+  <div class="header">
+    <div class="header-title">勤怠管理システム <span class="sync-indicator" id="sync-indicator"></span></div>
+    <div class="header-right"><span class="user-badge" id="user-badge"></span><button onclick="doLogout()">ログアウト</button></div>
+  </div>
+  <div class="tab-bar" id="tab-bar"></div>
+
+  <!-- ★ 社員：タイムスケジュール業務入力 -->
+  <div class="section" id="tab-emp">
+    <div class="card">
+      <div class="ts-date-nav">
+        <button onclick="tsMove(-1)">＜ 前日</button>
+        <span class="ts-date-label" id="ts-date-label"></span>
+        <button onclick="tsMove(1)">次日 ＞</button>
+        <button onclick="tsGoToday()" style="font-size:12px;padding:4px 10px;">今日</button>
+      </div>
+      <div id="ts-submitted-banner" style="display:none;" class="ts-submitted-banner">
+        <span>✅ 業務提出済みです</span>
+        <button class="btn-sm" onclick="tsEditMode()">修正する</button>
+      </div>
+      <div class="ts-summary" id="ts-summary"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="font-size:12px;color:var(--text2);">時間帯をクリックして業務を登録（開始→終了の順にクリック）</div>
+        <button class="primary btn-sm" id="ts-submit-btn" onclick="tsSubmit()">業務を提出</button>
+      </div>
+      <!-- タイムグリッド -->
+      <div class="ts-grid-wrap">
+        <div class="ts-axis" id="ts-axis"></div>
+        <div class="ts-slots" id="ts-slots"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 社員：カレンダー -->
+  <div class="section" id="tab-calendar">
+    <div class="card">
+      <div class="cal-nav"><button onclick="calMove(-1)">＜ 前月</button><span class="cal-month-label" id="cal-month-label"></span><button onclick="calMove(1)">次月 ＞</button></div>
+      <div class="cal-legend">
+        <span class="cal-legend-item"><span style="width:12px;height:12px;border-radius:3px;background:#FFF5F5;border:1px solid #F5CACA;display:inline-block;"></span>日曜</span>
+        <span class="cal-legend-item"><span style="width:12px;height:12px;border-radius:3px;background:#F0F6FF;border:1px solid #C0D4F0;display:inline-block;"></span>土曜</span>
+        <span class="cal-legend-item"><span style="width:12px;height:12px;border-radius:3px;background:#FFF0F0;border:1px solid #F5CACA;display:inline-block;"></span>祝日</span>
+        <span class="cal-legend-item"><span style="width:12px;height:12px;border-radius:3px;background:#FFEBEB;border:2px solid #E74C3C;display:inline-block;"></span>工期締切</span>
+      </div>
+      <div class="cal-legend" id="cal-legend"></div>
+      <div class="cal-grid-header" id="cal-grid-header"></div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div id="day-panel" style="display:none;">
+        <div class="event-panel">
+          <div class="event-panel-title" id="day-panel-title"></div>
+          <div id="day-events"></div>
+          <hr class="divider" style="margin:10px 0;">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;">予定を追加</div>
+          <div class="event-form">
+            <div class="field" style="margin:0;"><label>タイトル（任意）</label><input type="text" id="ev-title" placeholder="例: ABC社 現場調査"/></div>
+            <div class="field" style="margin:0;"><label>種別</label><select id="ev-type"></select></div>
+            <div class="field" style="margin:0;"><label>開始時刻</label><input type="time" id="ev-start" value="08:30"/></div>
+            <div class="field" style="margin:0;"><label>終了時刻</label><input type="time" id="ev-end" value="17:30"/></div>
+            <div class="field" style="margin:0;"><label>チーム（任意）</label><select id="ev-team"><option value="">個人の予定（チーム未設定）</option></select></div>
+            <div class="field" style="margin:0;"><label>メモ（任意）</label><input type="text" id="ev-memo" placeholder="備考..."/></div>
+            <div class="event-form-full"><button class="primary" onclick="addEvent()" style="width:100%;">追加する</button></div>
+          </div>
+        </div>
+      </div>
+      <div id="cal-ph" class="msg">日付をクリックして予定を追加・確認できます</div>
+    </div>
+  </div>
+
+  <!-- 社員：経費申請 -->
+  <div class="section" id="tab-expense">
+    <div class="card">
+      <div class="sec-title">経費申請フォーム</div>
+      <div class="row2"><div class="field"><label>案件</label><select id="exp-proj"></select></div><div class="field"><label>カテゴリ</label><select id="exp-cat"><option>物品購入</option><option>交通費</option><option>接待費</option><option>通信費</option><option>消耗品</option><option>その他</option></select></div></div>
+      <div class="row2"><div class="field"><label>金額（円）</label><input type="number" id="exp-amount" min="0" placeholder="例: 5000"/></div><div class="field"><label>日付</label><input type="date" id="exp-date"/></div></div>
+      <div class="field"><label>内容・備考</label><input type="text" id="exp-note" placeholder="例: 現場用GPSレシーバー購入"/></div>
+      <button class="primary" onclick="submitExpense()" style="width:100%;margin-top:4px;">経費を申請する</button>
+      <div id="exp-success" style="display:none;font-size:13px;color:var(--green);margin-top:8px;">申請しました！</div>
+    </div>
+    <div class="card"><div class="sec-title">自分の申請履歴</div><div id="my-expenses"></div></div>
+  </div>
+
+  <!-- 管理者：勤怠 -->
+  <div class="section" id="tab-admin">
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-num" style="color:var(--blue);" id="s-present">0</div><div class="stat-lbl">本日提出済</div></div>
+      <div class="stat"><div class="stat-num" style="color:var(--amber);" id="s-pending">0</div><div class="stat-lbl">未提出</div></div>
+      <div class="stat"><div class="stat-num" style="color:var(--purple);" id="s-todaycost">¥0</div><div class="stat-lbl">本日人件費</div></div>
+      <div class="stat"><div class="stat-num" style="color:#D85A30;" id="s-exp-pending">0</div><div class="stat-lbl">経費承認待ち</div></div>
+    </div>
+    <div class="admin-filter">
+      <label style="margin:0;white-space:nowrap;">社員を絞り込む：</label>
+      <select id="admin-emp-filter" onchange="renderAdmin()"><option value="__all__">全社員</option></select>
+      <button onclick="exportCSV('daily')">本日分 CSV出力</button>
+      <button onclick="loadAllData()">🔄 データ更新</button>
+    </div>
+    <div class="card"><div class="sec-title" id="att-table-title">業務提出状況</div>
+      <div class="table-wrap"><table><thead><tr><th>社員名</th><th>状態</th><th>単価</th><th>本日費用</th><th>業務内容</th></tr></thead><tbody id="att-table"></tbody></table></div>
+    </div>
+    <div class="card"><div class="sec-title" id="alloc-title">案件別 人員配置</div><div id="alloc-area"></div></div>
+  </div>
+
+  <!-- 管理者：チームカレンダー -->
+  <div class="section" id="tab-teamcal">
+    <div class="card">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">
+        <button onclick="teamCalMove(-1)">＜ 前月</button>
+        <span class="cal-month-label" id="team-cal-label"></span>
+        <button onclick="teamCalMove(1)">次月 ＞</button>
+        <select id="teamcal-filter" onchange="teamCalFilterChange()" style="width:auto;margin-left:8px;"></select>
+      </div>
+      <div class="cal-legend">
+        <span class="cal-legend-item"><span style="width:12px;height:12px;border-radius:3px;background:#FFF5F5;border:1px solid #F5CACA;display:inline-block;"></span>日曜</span>
+        <span class="cal-legend-item"><span style="width:12px;height:12px;border-radius:3px;background:#F0F6FF;border:1px solid #C0D4F0;display:inline-block;"></span>土曜</span>
+        <span class="cal-legend-item"><span style="width:12px;height:12px;border-radius:3px;background:#FFF0F0;border:1px solid #F5CACA;display:inline-block;"></span>祝日</span>
+        <span class="cal-legend-item"><span style="width:12px;height:12px;border-radius:3px;background:#FFEBEB;border:2px solid #E74C3C;display:inline-block;"></span>工期締切</span>
+      </div>
+      <div class="cal-legend" id="team-cal-legend"></div>
+      <div class="cal-hint">日付をクリックすると詳細が表示されます</div>
+      <div class="cal-grid-header" id="team-cal-dow"></div>
+      <div class="cal-grid" id="team-cal-grid"></div>
+    </div>
+    <div class="team-day-panel" id="team-day-panel" style="display:none;">
+      <div class="team-day-title"><span id="team-day-panel-title"></span><button class="team-day-close" onclick="closeTeamDayPanel()">×</button></div>
+      <div id="team-day-content"></div>
+    </div>
+  </div>
+
+  <!-- 経費承認 -->
+  <div class="section" id="tab-approve">
+    <div style="margin-bottom:1rem;"><button onclick="loadAllData()">🔄 データ更新</button></div>
+    <div class="stat-grid" id="approve-stats"></div>
+    <div class="card"><div class="sec-title">承認待ち</div><div id="pending-list"></div></div>
+    <div class="card"><div class="sec-title">承認済み・却下済み</div><div id="decided-list"></div></div>
+  </div>
+
+  <!-- コスト管理 -->
+  <div class="section" id="tab-cost">
+    <div id="deadline-alerts"></div><div id="cost-alerts"></div>
+    <div class="stat-grid" id="cost-summary"></div>
+    <div class="card">
+      <div class="sec-title">案件別 予算・実績・工期</div>
+      <div class="table-wrap"><table><thead><tr><th>案件名</th><th>発注者</th><th>工期終了予定日</th><th>残日数</th><th>照査</th><th>管理</th><th>担当</th><th>予算</th><th>人件費</th><th>経費</th><th>合計</th><th>消化率</th></tr></thead><tbody id="cost-table"></tbody></table></div>
+    </div>
+    <div class="card"><div class="sec-title">社員別 コスト内訳（今月）</div><div class="table-wrap"><table><thead><tr><th>社員名</th><th>単価/h</th><th>稼働時間</th><th>人件費</th><th>経費</th><th>合計</th></tr></thead><tbody id="emp-cost-table"></tbody></table></div></div>
+  </div>
+
+  <!-- 月次集計 -->
+  <div class="section" id="tab-monthly">
+    <div class="month-filter">
+      <select id="m-emp" style="width:auto;"><option value="__all__">全社員</option></select>
+      <select id="m-month" style="width:auto;">
+        <option value="2025-04">2025年4月</option><option value="2025-05">2025年5月</option><option value="2025-06">2025年6月</option>
+        <option value="2025-07">2025年7月</option><option value="2025-08">2025年8月</option><option value="2025-09">2025年9月</option>
+        <option value="2025-10">2025年10月</option><option value="2025-11">2025年11月</option><option value="2025-12">2025年12月</option>
+        <option value="2026-01">2026年1月</option><option value="2026-02">2026年2月</option><option value="2026-03">2026年3月</option>
+        <option value="2026-04" selected>2026年4月</option><option value="2026-05">2026年5月</option><option value="2026-06">2026年6月</option>
+      </select>
+      <button onclick="renderMonthly()">集計</button><button onclick="exportCSV('monthly')">CSV出力</button>
+    </div>
+    <div class="stat-grid" id="monthly-stats"></div>
+    <div class="card"><div class="sec-title">社員別</div><div id="monthly-emp-table"></div></div>
+    <div class="card"><div class="sec-title">案件別</div><div id="monthly-proj-table"></div></div>
+    <div class="card"><div class="sec-title">経費一覧</div><div id="monthly-exp-table"></div></div>
+  </div>
+
+  <!-- 設定 -->
+  <div class="section" id="tab-settings">
+    <div class="card">
+      <div class="sec-title">社員マスタ</div>
+      <div class="table-wrap" style="margin-bottom:12px;"><table><thead><tr><th>社員名</th><th>単価（円/時間）</th><th>パスワード</th><th></th></tr></thead><tbody id="emp-rate-table"></tbody></table></div>
+      <div class="add-tag-row" style="gap:8px;">
+        <input type="text" id="new-emp" placeholder="社員名..." style="flex:2;min-width:80px;width:auto;"/>
+        <input type="number" id="new-emp-rate" placeholder="単価" min="0" step="100" style="flex:1;max-width:90px;width:auto;"/>
+        <input type="text" id="new-emp-pass" placeholder="パスワード" style="flex:1;max-width:110px;width:auto;"/>
+        <button onclick="addEmp()">追加</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec-title">案件マスタ</div>
+      <div class="table-wrap" style="margin-bottom:12px;"><table><thead><tr><th>案件名</th><th>発注者（担当）</th><th>予算（円）</th><th>工期終了予定日</th><th>残日数</th><th>照査</th><th>管理</th><th>担当</th><th></th></tr></thead><tbody id="proj-budget-table"></tbody></table></div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">新しい案件を追加</div>
+      <div class="proj-add-grid">
+        <div><label>案件名</label><input type="text" id="new-proj" placeholder="案件名..."/></div>
+        <div><label>発注者</label><input type="text" id="new-proj-client" placeholder="例: ○○市"/></div>
+        <div><label>予算（円）</label><input type="number" id="new-proj-budget" placeholder="予算" min="0" step="10000"/></div>
+        <div><label>工期終了予定日</label><input type="date" id="new-proj-deadline"/></div>
+        <div><label>照査</label><input type="text" id="new-proj-checker" placeholder="氏名"/></div>
+        <div><label>管理</label><input type="text" id="new-proj-manager" placeholder="氏名"/></div>
+        <div><label>担当</label><input type="text" id="new-proj-staff" placeholder="氏名"/></div>
+      </div>
+      <button onclick="addProj()" style="margin-top:10px;">追加</button>
+    </div>
+    <div class="card">
+      <div class="sec-title">チーム管理</div>
+      <div id="team-list"></div>
+      <hr class="divider"/>
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;">新しいチームを作成</div>
+      <div class="field"><label>チーム名</label><input type="text" id="new-team-name" placeholder="例: 現場Aチーム"/></div>
+      <div class="field"><label>メンバーを選択（複数選択可・Ctrl+クリック）</label><select id="new-team-members" multiple style="height:120px;"></select></div>
+      <button class="primary" onclick="addTeam()" style="margin-top:4px;">チームを作成</button>
+    </div>
+    <div class="card">
+      <div class="sec-title">管理者パスワード変更</div>
+      <div class="row2"><div class="field"><label>新しいパスワード</label><input type="password" id="new-admin-pass" placeholder="新しいパスワード..."/></div><div style="display:flex;align-items:flex-end;"><button onclick="changeAdminPass()">変更する</button></div></div>
+      <div id="pass-msg" style="font-size:13px;color:var(--green);display:none;margin-top:8px;">パスワードを変更しました</div>
+    </div>
+  </div>
+</div>
+
+<!-- ★ 業務入力モーダル -->
+<div class="modal-overlay" id="ts-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-title" id="ts-modal-title">業務を登録</div>
+    <div class="field"><label>案件</label><select id="ts-modal-proj"></select></div>
+    <div class="field"><label>メモ（任意）</label><input type="text" id="ts-modal-memo" placeholder="備考..."/></div>
+    <div class="modal-actions">
+      <button onclick="tsModalCancel()">キャンセル</button>
+      <button class="primary" onclick="tsModalSave()">登録する</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL='https://udgqkkrukhgfhhbqoaqf.supabase.co';
+const SUPABASE_KEY='sb_publishable_nReqWxp858tTGSLF9i_yhw_UpIOxbAV';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+const HOLIDAYS={'2025-01-01':'元日','2025-01-13':'成人の日','2025-02-11':'建国記念の日','2025-02-24':'天皇誕生日 振替','2025-03-20':'春分の日','2025-04-29':'昭和の日','2025-05-03':'憲法記念日','2025-05-04':'みどりの日','2025-05-05':'こどもの日','2025-05-06':'振替休日','2025-07-21':'海の日','2025-08-11':'山の日','2025-09-15':'敬老の日','2025-09-23':'秋分の日','2025-10-13':'スポーツの日','2025-11-03':'文化の日','2025-11-24':'勤労感謝の日 振替','2026-01-01':'元日','2026-01-12':'成人の日','2026-02-11':'建国記念の日','2026-02-23':'天皇誕生日','2026-03-20':'春分の日','2026-04-29':'昭和の日','2026-05-03':'憲法記念日','2026-05-04':'みどりの日','2026-05-05':'こどもの日','2026-05-06':'振替休日','2026-07-20':'海の日','2026-08-11':'山の日','2026-09-21':'敬老の日','2026-09-22':'国民の休日','2026-09-23':'秋分の日','2026-10-12':'スポーツの日','2026-11-03':'文化の日','2026-11-23':'勤労感謝の日'};
+const EV_TYPES={survey_mag:{label:'磁気探査',color:'#8B2FC9',bg:'#F3E8FC',tc:'#5B1A8A'},boring:{label:'ボーリング',color:'#C0392B',bg:'#FCEBEB',tc:'#791F1F'},survey:{label:'測量',color:'#D35400',bg:'#FDF0E8',tc:'#7D3200'},water:{label:'水質検査',color:'#1A5276',bg:'#E8F4FC',tc:'#1A5276'},design:{label:'設計',color:'#1D8348',bg:'#E9F7EF',tc:'#145A32'},drone:{label:'ドローン撮影',color:'#2471A3',bg:'#EAF4FB',tc:'#1A5276'},meeting:{label:'打合せ',color:'#B7950B',bg:'#FEF9E7',tc:'#7D6608'},workshop:{label:'ワークショップ',color:'#117A65',bg:'#E8F8F5',tc:'#0E6655'},training:{label:'研修',color:'#6C3483',bg:'#F5EEF8',tc:'#512E5F'},business_trip:{label:'出張',color:'#1F618D',bg:'#EBF5FB',tc:'#1A5276'},delivery:{label:'納品',color:'#196F3D',bg:'#E9F7EF',tc:'#145A32'},other:{label:'その他',color:'#717D7E',bg:'#F2F3F4',tc:'#424949'}};
+const PROJ_COLORS=['#378ADD','#1D9E75','#D85A30','#7F77DD','#BA7517','#D4537E','#639922','#888780','#1A5276','#6C3483'];
+const PROJ_BGCOLORS=['#EAF4FC','#E1F5EE','#FDF0E8','#F0EFFC','#FEF9EC','#FCE8EF','#EFF7E8','#F5F5F5','#E8F4FC','#F5EEF8'];
+const AV_BG=['#B5D4F4','#9FE1CB','#F5C4B3','#CECBF6','#FAC775','#F4C0D1','#C0DD97','#D3D1C7'];
+const AV_TX=['#0C447C','#085041','#712B13','#3C3489','#633806','#72243E','#27500A','#444441'];
+const BAR_C=['#378ADD','#1D9E75','#D85A30','#7F77DD','#BA7517','#D4537E','#639922','#888780'];
+const CAT_COLOR={'物品購入':'#378ADD','交通費':'#1D9E75','接待費':'#D85A30','通信費':'#7F77DD','消耗品':'#BA7517','その他':'#888780'};
+
+// タイムスケジュール設定
+const TS_START=8; // 8:00から
+const TS_END=19;  // 19:00まで
+const TS_SLOT_MIN=30; // 30分刻み
+const TS_SLOTS=(TS_END-TS_START)*60/TS_SLOT_MIN; // スロット数
+
+let adminPassword='admin1234';
+let S={employees:[],projects:[],teams:[],attendance:[],expenses:[],events:[],
+  calYear:new Date().getFullYear(),calMonth:new Date().getMonth(),calSelectedDate:null,
+  teamCalYear:new Date().getFullYear(),teamCalMonth:new Date().getMonth(),teamCalSelectedDate:null,
+  tsDate:new Date().toISOString().slice(0,10),
+  tsSelStart:null, // 選択中の開始スロット
+};
+const today=new Date().toISOString().slice(0,10);
+let currentUser={role:null,name:null};
+let selectedRole='emp';
+
+function fmt(n){return Math.round(n).toLocaleString();}
+function empObj(n){return S.employees.find(e=>e.name===n)||{name:n,rate:0,password:''};}
+function calcCost(n,h){return h*(empObj(n).rate||0);}
+function initials(n){return n.split(' ').map(c=>c[0]).join('');}
+function nowStr(){return new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});}
+function isHoliday(ds){return HOLIDAYS[ds]||null;}
+function dayClass(ds){const d=new Date(ds+'T00:00:00');const w=d.getDay();if(isHoliday(ds))return 'is-holiday';if(w===0)return 'is-sun';if(w===6)return 'is-sat';return '';}
+function fmtDate(ds){const d=new Date(ds+'T00:00:00');const w=['日','月','火','水','木','金','土'][d.getDay()];return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${w}）`;}
+function calcRemainingDays(dl){if(!dl)return null;const t=new Date(today+'T00:00:00');const d=new Date(dl+'T00:00:00');return Math.floor((d-t)/(1000*60*60*24));}
+function setSyncStatus(m){const el=document.getElementById('sync-indicator');if(el)el.textContent=m;}
+function projColor(name,alpha=1){const i=S.projects.findIndex(p=>p.name===name)%PROJ_COLORS.length;return PROJ_COLORS[Math.max(0,i)];}
+function projBg(name){const i=S.projects.findIndex(p=>p.name===name)%PROJ_BGCOLORS.length;return PROJ_BGCOLORS[Math.max(0,i)];}
+
+// 工期締切日一覧（カレンダー用）
+function getDeadlineDates(){
+  const m={};
+  S.projects.forEach(p=>{if(p.deadline)m[p.deadline]=(m[p.deadline]||[]),(m[p.deadline]=[...(m[p.deadline]||[]),p.name]);});
+  return m;
+}
+
+// ===== Supabase =====
+async function loadAllData(){
+  setSyncStatus('⏳ 同期中...');
+  try{
+    const [empR,projR,teamR,attR,expR,evR]=await Promise.all([
+      sb.from('employees').select('*').order('name'),
+      sb.from('projects').select('*').order('name'),
+      sb.from('teams').select('*').order('name'),
+      sb.from('attendance').select('*'),
+      sb.from('expenses').select('*').order('created_at',{ascending:false}),
+      sb.from('events').select('*'),
+    ]);
+    S.employees=empR.data||[];S.projects=projR.data||[];S.teams=teamR.data||[];
+    S.attendance=attR.data||[];S.expenses=expR.data||[];S.events=evR.data||[];
+    setSyncStatus('✅ 同期済');
+    rebuildLoginEmpSel();
+    if(currentUser.role==='admin'){
+      rebuildAdminEmpFilter();renderAdmin();renderEmpSelect('m-emp',true);
+      rebuildTeamCalFilter();renderEmpRateTable();renderProjBudgetTable();renderTeamList();renderNewTeamMemberSelect();
+    } else if(currentUser.role==='emp'){
+      rebuildEvTeamSelect();renderTimeschedule();renderMyExpenses();renderCalendar();
+    }
+  }catch(e){setSyncStatus('❌ 通信エラー');console.error(e);}
+}
+function getAtt(emp,date){return S.attendance.find(a=>a.employee_name===emp&&a.date===date)||{employee_name:emp,date,submitted:false,work:[]};}
+function getEventsFor(emp,date){return S.events.filter(e=>e.employee_name===emp&&e.date===date);}
+
+// ===== ログイン =====
+function selectRole(r){selectedRole=r;document.getElementById('role-emp-btn').classList.toggle('active',r==='emp');document.getElementById('role-admin-btn').classList.toggle('active',r==='admin');document.getElementById('emp-select-wrap').style.display=r==='emp'?'block':'none';document.getElementById('admin-pass-wrap').style.display=r==='admin'?'block':'none';}
+function rebuildLoginEmpSel(){const sel=document.getElementById('login-emp-sel');sel.innerHTML='<option value="">-- 選択してください --</option>';S.employees.forEach(e=>{const o=document.createElement('option');o.value=e.name;o.textContent=e.name;sel.appendChild(o);});}
+async function doLogin(){
+  const err=document.getElementById('login-error');err.style.display='none';
+  if(selectedRole==='emp'){const name=document.getElementById('login-emp-sel').value;if(!name){err.textContent='社員名を選択してください';err.style.display='block';return;}currentUser={role:'emp',name};}
+  else{const pw=document.getElementById('admin-pass').value;if(pw!==adminPassword){err.textContent='パスワードが正しくありません';err.style.display='block';return;}currentUser={role:'admin',name:'管理者'};}
+  document.getElementById('login-screen').style.display='none';document.getElementById('main-screen').style.display='block';
+  document.getElementById('user-badge').textContent=currentUser.role==='admin'?'管理者':'社員: '+currentUser.name;
+  buildTabs();initEvTypeSelect();renderProjSelect('exp-proj');document.getElementById('exp-date').value=today;
+  await loadAllData();
+}
+function doLogout(){currentUser={role:null,name:null};document.getElementById('main-screen').style.display='none';document.getElementById('login-screen').style.display='block';document.getElementById('admin-pass').value='';selectedRole='emp';selectRole('emp');}
+function buildTabs(){
+  const bar=document.getElementById('tab-bar');bar.innerHTML='';
+  const empTabs=[{id:'emp',label:'業務入力'},{id:'calendar',label:'カレンダー'},{id:'expense',label:'経費申請'}];
+  const adminTabs=[{id:'admin',label:'勤怠管理'},{id:'teamcal',label:'チーム予定'},{id:'approve',label:'経費承認'},{id:'cost',label:'コスト管理'},{id:'monthly',label:'月次集計'},{id:'settings',label:'設定'}];
+  const tabs=currentUser.role==='admin'?adminTabs:empTabs;
+  tabs.forEach((t,i)=>{const btn=document.createElement('button');btn.className='tab'+(i===0?' active':'');btn.textContent=t.label;btn.onclick=function(){switchTab(t.id,this);};bar.appendChild(btn);});
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('tab-'+tabs[0].id).classList.add('active');
+}
+function switchTab(tab,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');btn.classList.add('active');
+  if(tab==='emp')renderTimeschedule();
+  if(tab==='admin')renderAdmin();if(tab==='approve')renderApprove();
+  if(tab==='cost')renderCost();if(tab==='monthly')renderMonthly();
+  if(tab==='calendar')renderCalendar();if(tab==='teamcal'){S.teamCalSelectedDate=null;renderTeamCal();}
+  if(tab==='settings'){renderEmpRateTable();renderProjBudgetTable();renderTeamList();renderNewTeamMemberSelect();}
+}
+function rebuildAdminEmpFilter(){const sel=document.getElementById('admin-emp-filter');if(!sel)return;const cur=sel.value;sel.innerHTML='<option value="__all__">全社員</option>';S.employees.forEach(e=>{const o=document.createElement('option');o.value=e.name;o.textContent=e.name;if(e.name===cur)o.selected=true;sel.appendChild(o);});}
+
+// ===== ★★★ タイムスケジュール業務入力 ★★★ =====
+function slotToTime(slot){
+  const totalMin=TS_START*60+slot*TS_SLOT_MIN;
+  const h=Math.floor(totalMin/60);const m=totalMin%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+function timeToSlot(timeStr){
+  if(!timeStr)return null;
+  const[h,m]=timeStr.split(':').map(Number);
+  return Math.floor(((h*60+m)-TS_START*60)/TS_SLOT_MIN);
+}
+
+function renderTimeschedule(){
+  const ds=S.tsDate;
+  const d=new Date(ds+'T00:00:00');
+  const wLabels=['日','月','火','水','木','金','土'];
+  document.getElementById('ts-date-label').textContent=`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${wLabels[d.getDay()]}）`;
+
+  const rec=getAtt(currentUser.name,ds);
+  const work=rec.work||[];
+  const submitted=rec.submitted;
+
+  // 提出済みバナー
+  const banner=document.getElementById('ts-submitted-banner');
+  const submitBtn=document.getElementById('ts-submit-btn');
+  if(submitted){banner.style.display='flex';submitBtn.style.display='none';}
+  else{banner.style.display='none';submitBtn.style.display='inline-block';}
+
+  // サマリー
+  renderTsSummary(work);
+
+  // 時間軸
+  const axis=document.getElementById('ts-axis');axis.innerHTML='';
+  for(let s=0;s<=TS_SLOTS;s++){
+    const cell=document.createElement('div');cell.className='ts-axis-cell';
+    if(s%2===0){const totalMin=TS_START*60+s*TS_SLOT_MIN;const h=Math.floor(totalMin/60);cell.textContent=`${h}:00`;}
+    axis.appendChild(cell);
+  }
+
+  // スロット
+  const slotsEl=document.getElementById('ts-slots');slotsEl.innerHTML='';
+  slotsEl.style.position='relative';
+
+  for(let s=0;s<TS_SLOTS;s++){
+    const slot=document.createElement('div');slot.className='ts-slot';
+    slot.dataset.slot=s;
+    if(!submitted){
+      slot.addEventListener('click',()=>tsSlotClick(s));
+      slot.addEventListener('mouseenter',()=>tsSlotHover(s));
+    }
+    slotsEl.appendChild(slot);
+  }
+
+  // 業務ブロックを描画
+  work.forEach((w,wi)=>{
+    const startSlot=timeToSlot(w.start);
+    const endSlot=timeToSlot(w.end);
+    if(startSlot===null||endSlot===null)return;
+    const slotH=40;
+    const top=startSlot*slotH+2;
+    const height=Math.max((endSlot-startSlot)*slotH-4,slotH-4);
+    const block=document.createElement('div');
+    block.className='ts-block'+(submitted?' ts-submitted':'');
+    block.style.cssText=`top:${top}px;height:${height}px;background:${projBg(w.project)};color:${projColor(w.project)};border:1.5px solid ${projColor(w.project)};`;
+    const hours=((endSlot-startSlot)*TS_SLOT_MIN/60).toFixed(1);
+    block.innerHTML=`<span class="ts-block-text">${w.project}${w.memo?' / '+w.memo:''} (${hours}h)</span>${!submitted?`<button class="ts-block-del" onclick="tsDeleteBlock(${wi})" title="削除">×</button>`:''}`;
+    slotsEl.appendChild(block);
+  });
+
+  // 選択中ハイライト
+  S.tsSelStart=null;
+}
+
+function renderTsSummary(work){
+  const el=document.getElementById('ts-summary');
+  let totalMin=0;const projMap={};
+  work.forEach(w=>{
+    const s=timeToSlot(w.start),e=timeToSlot(w.end);
+    if(s===null||e===null)return;
+    const min=(e-s)*TS_SLOT_MIN;totalMin+=min;
+    if(!projMap[w.project])projMap[w.project]=0;projMap[w.project]+=min;
+  });
+  const totalH=(totalMin/60).toFixed(1);
+  const workMin=TS_SLOT_MIN*(TS_SLOTS);
+  const pct=Math.min(Math.round(totalMin/workMin*100),100);
+  let html=`<div class="ts-summary-item"><span style="font-weight:600;">合計: ${totalH}h</span></div>`;
+  html+=`<div class="ts-summary-item" style="flex:1;gap:8px;min-width:200px;"><div class="ts-progress-bar"><div class="ts-progress-fill" style="width:${pct}%;"></div></div><span style="font-size:12px;color:var(--text2);">${pct}%</span></div>`;
+  Object.entries(projMap).forEach(([p,m])=>{html+=`<div class="ts-summary-item"><span style="width:10px;height:10px;border-radius:50%;background:${projColor(p)};display:inline-block;"></span><span>${p}: ${(m/60).toFixed(1)}h</span></div>`;});
+  if(!work.length)html='<span style="color:var(--text2);">業務未登録</span>';
+  el.innerHTML=html;
+}
+
+let tsSelStart=null;
+function tsSlotClick(slot){
+  if(tsSelStart===null){
+    // 開始スロット選択
+    tsSelStart=slot;
+    document.querySelectorAll('.ts-slot').forEach((el,i)=>{el.classList.toggle('sel-start',i===slot);});
+  } else {
+    // 終了スロット選択 → モーダル表示
+    const start=Math.min(tsSelStart,slot);
+    const end=Math.max(tsSelStart,slot)+1;
+    tsSelStart=null;
+    document.querySelectorAll('.ts-slot').forEach(el=>{el.classList.remove('sel-start','sel-hover');});
+    if(end<=start){return;}
+    openTsModal(start,end);
+  }
+}
+function tsSlotHover(slot){
+  if(tsSelStart===null)return;
+  document.querySelectorAll('.ts-slot').forEach((el,i)=>{
+    const s=Math.min(tsSelStart,slot);const e=Math.max(tsSelStart,slot);
+    el.classList.toggle('sel-hover',i>=s&&i<=e);
+    el.classList.toggle('sel-start',i===tsSelStart);
+  });
+}
+
+let tsPendingStart=null,tsPendingEnd=null;
+function openTsModal(startSlot,endSlot){
+  tsPendingStart=startSlot;tsPendingEnd=endSlot;
+  const startTime=slotToTime(startSlot);const endTime=slotToTime(endSlot);
+  document.getElementById('ts-modal-title').textContent=`業務登録: ${startTime} 〜 ${endTime}`;
+  // 案件セレクト
+  const sel=document.getElementById('ts-modal-proj');sel.innerHTML='';
+  S.projects.forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=p.name;sel.appendChild(o);});
+  document.getElementById('ts-modal-memo').value='';
+  document.getElementById('ts-modal').style.display='flex';
+}
+function tsModalCancel(){document.getElementById('ts-modal').style.display='none';tsPendingStart=null;tsPendingEnd=null;}
+async function tsModalSave(){
+  if(tsPendingStart===null)return;
+  const proj=document.getElementById('ts-modal-proj').value;
+  const memo=document.getElementById('ts-modal-memo').value.trim();
+  const startTime=slotToTime(tsPendingStart);const endTime=slotToTime(tsPendingEnd);
+  const hours=((tsPendingEnd-tsPendingStart)*TS_SLOT_MIN/60);
+  document.getElementById('ts-modal').style.display='none';
+
+  const rec=getAtt(currentUser.name,S.tsDate);
+  const work=[...(rec.work||[]),{project:proj,start:startTime,end:endTime,hours,memo}];
+  const{error}=await sb.from('attendance').upsert({employee_name:currentUser.name,date:S.tsDate,submitted:false,work},{onConflict:'employee_name,date'});
+  if(!error){await loadAllData();}else{alert('保存エラー: '+error.message);}
+  tsPendingStart=null;tsPendingEnd=null;
+}
+async function tsDeleteBlock(idx){
+  const rec=getAtt(currentUser.name,S.tsDate);
+  const work=(rec.work||[]).filter((_,i)=>i!==idx);
+  const{error}=await sb.from('attendance').upsert({employee_name:currentUser.name,date:S.tsDate,submitted:false,work},{onConflict:'employee_name,date'});
+  if(!error){await loadAllData();}else{alert('削除エラー: '+error.message);}
+}
+async function tsSubmit(){
+  const rec=getAtt(currentUser.name,S.tsDate);
+  if(!(rec.work||[]).length){alert('業務が登録されていません');return;}
+  const{error}=await sb.from('attendance').upsert({employee_name:currentUser.name,date:S.tsDate,submitted:true,work:rec.work||[]},{onConflict:'employee_name,date'});
+  if(!error){await loadAllData();}else{alert('提出エラー: '+error.message);}
+}
+async function tsEditMode(){
+  const rec=getAtt(currentUser.name,S.tsDate);
+  const{error}=await sb.from('attendance').upsert({employee_name:currentUser.name,date:S.tsDate,submitted:false,work:rec.work||[]},{onConflict:'employee_name,date'});
+  if(!error){await loadAllData();}
+}
+function tsMove(dir){
+  const d=new Date(S.tsDate+'T00:00:00');d.setDate(d.getDate()+dir);
+  S.tsDate=d.toISOString().slice(0,10);renderTimeschedule();
+}
+function tsGoToday(){S.tsDate=today;renderTimeschedule();}
+
+// ===== カレンダー（工期締切対応）=====
+function initEvTypeSelect(){const sel=document.getElementById('ev-type');if(!sel)return;sel.innerHTML='';Object.entries(EV_TYPES).forEach(([k,v])=>{const o=document.createElement('option');o.value=k;o.textContent=v.label;sel.appendChild(o);});}
+function rebuildEvTeamSelect(){const sel=document.getElementById('ev-team');if(!sel)return;sel.innerHTML='<option value="">個人の予定（チーム未設定）</option>';S.teams.forEach(t=>{const o=document.createElement('option');o.value=t.name;o.textContent=t.name;sel.appendChild(o);});}
+function buildEvLegend(elId){const el=document.getElementById(elId);if(!el)return;el.innerHTML='';Object.values(EV_TYPES).forEach(v=>{el.innerHTML+=`<span class="cal-legend-item"><span style="width:10px;height:10px;border-radius:50%;background:${v.color};display:inline-block;"></span>${v.label}</span>`;});}
+
+function renderCalendar(){
+  buildEvLegend('cal-legend');
+  const emp=currentUser.name;const y=S.calYear,m=S.calMonth;
+  const deadlines=getDeadlineDates();
+  document.getElementById('cal-month-label').textContent=`${y}年${m+1}月`;
+  // 曜日ヘッダー
+  const hdr=document.getElementById('cal-grid-header');hdr.innerHTML='';
+  ['日','月','火','水','木','金','土'].forEach((d,i)=>{const el=document.createElement('div');el.className=`cal-dow ${['sun','wkd','wkd','wkd','wkd','wkd','sat'][i]}`;el.textContent=d;hdr.appendChild(el);});
+  const grid=document.getElementById('cal-grid');grid.innerHTML='';
+  const firstDay=new Date(y,m,1).getDay();const daysInMonth=new Date(y,m+1,0).getDate();
+  for(let i=0;i<firstDay;i++){const el=document.createElement('div');el.className='cal-day empty';grid.appendChild(el);}
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dcl=dayClass(ds);const hol=isHoliday(ds);const evs=getEventsFor(emp,ds);
+    const dlProjs=deadlines[ds];
+    const el=document.createElement('div');
+    el.className=`cal-day ${dcl}${ds===today?' today':''}${S.calSelectedDate===ds?' selected':''}${dlProjs?' has-deadline':''}`;
+    const numEl=document.createElement('div');numEl.className='cal-day-num';numEl.textContent=d;el.appendChild(numEl);
+    if(hol){const hl=document.createElement('div');hl.className='holiday-label';hl.textContent=hol;el.appendChild(hl);}
+    if(dlProjs){dlProjs.forEach(pn=>{const dl=document.createElement('div');dl.className='deadline-label';dl.textContent='🔴 '+pn+' 締切';el.appendChild(dl);});}
+    evs.slice(0,2).forEach(ev=>{const t=EV_TYPES[ev.type]||EV_TYPES.other;const e=document.createElement('div');e.className='cal-event';e.style.cssText=`background:${t.bg};color:${t.tc};`;e.textContent=(ev.start_time?ev.start_time+' ':'')+(ev.title||t.label);el.appendChild(e);});
+    if(evs.length>2){const mm=document.createElement('div');mm.className='cal-more';mm.textContent=`+${evs.length-2}件`;el.appendChild(mm);}
+    el.addEventListener('click',()=>selectDay(ds));grid.appendChild(el);
+  }
+  if(S.calSelectedDate)selectDay(S.calSelectedDate);
+  else{document.getElementById('day-panel').style.display='none';document.getElementById('cal-ph').style.display='block';}
+}
+function calMove(dir){S.calMonth+=dir;if(S.calMonth>11){S.calMonth=0;S.calYear++;}if(S.calMonth<0){S.calMonth=11;S.calYear--;}S.calSelectedDate=null;renderCalendar();}
+function selectDay(ds){
+  S.calSelectedDate=ds;document.getElementById('cal-ph').style.display='none';document.getElementById('day-panel').style.display='block';
+  const hol=isHoliday(ds);const dlProjs=getDeadlineDates()[ds];
+  let title=fmtDate(ds)+'の予定';
+  if(hol)title+=` （${hol}）`;
+  if(dlProjs)title+=` 【工期締切: ${dlProjs.join(', ')}】`;
+  document.getElementById('day-panel-title').textContent=title;renderDayEvents(ds);renderCalendar();
+}
+function renderDayEvents(ds){
+  const evs=getEventsFor(currentUser.name,ds);const el=document.getElementById('day-events');el.innerHTML='';
+  if(!evs.length){el.innerHTML='<div style="font-size:13px;color:var(--text2);margin-bottom:8px;">予定なし</div>';return;}
+  evs.forEach(ev=>{const t=EV_TYPES[ev.type]||EV_TYPES.other;const teamBadge=ev.team_name?`<span style="font-size:10px;background:var(--blue-bg);color:var(--blue);border-radius:3px;padding:1px 6px;margin-left:4px;">👥 ${ev.team_name}</span>`:'' ;el.innerHTML+=`<div class="event-item"><span class="event-dot" style="background:${t.color};"></span><span style="font-size:12px;color:var(--text2);min-width:90px;">${ev.start_time||''}${ev.end_time?'〜'+ev.end_time:''}</span><span style="flex:1;"><span style="font-weight:600;">${ev.title||t.label}</span>${teamBadge}${ev.memo?`<span style="font-size:12px;color:var(--text2);margin-left:6px;">${ev.memo}</span>`:''}</span><button class="event-del" onclick="deleteEvent('${ev.id}')">×</button></div>`;});
+}
+async function addEvent(){
+  if(!S.calSelectedDate)return;
+  const type=document.getElementById('ev-type').value;
+  const teamName=document.getElementById('ev-team').value;
+  const{error}=await sb.from('events').insert({employee_name:currentUser.name,date:S.calSelectedDate,title:document.getElementById('ev-title').value.trim(),type,start_time:document.getElementById('ev-start').value,end_time:document.getElementById('ev-end').value,memo:document.getElementById('ev-memo').value.trim(),team_name:teamName});
+  if(!error){document.getElementById('ev-title').value='';document.getElementById('ev-memo').value='';document.getElementById('ev-start').value='08:30';document.getElementById('ev-end').value='17:30';document.getElementById('ev-team').value='';await loadAllData();renderDayEvents(S.calSelectedDate);renderCalendar();}
+  else{alert('保存エラー');}
+}
+async function deleteEvent(id){
+  const{error}=await sb.from('events').delete().eq('id',id);
+  if(!error){await loadAllData();renderDayEvents(S.calSelectedDate);renderCalendar();}
+}
+
+// ===== チームカレンダー（工期締切対応）=====
+function rebuildTeamCalFilter(){const sel=document.getElementById('teamcal-filter');if(!sel)return;const cur=sel.value;sel.innerHTML='<option value="__all__">全社員</option>';if(S.teams.length){const og=document.createElement('optgroup');og.label='── チーム ──';S.teams.forEach(t=>{const o=document.createElement('option');o.value='team:'+t.id;o.textContent=t.name;og.appendChild(o);});sel.appendChild(og);}const og2=document.createElement('optgroup');og2.label='── 個人 ──';S.employees.forEach(e=>{const o=document.createElement('option');o.value='emp:'+e.name;o.textContent=e.name;og2.appendChild(o);});sel.appendChild(og2);if(cur)sel.value=cur;}
+function getTeamCalTargets(){const v=document.getElementById('teamcal-filter').value;if(v==='__all__')return S.employees.map(e=>e.name);if(v.startsWith('team:')){const id=v.split(':')[1];const t=S.teams.find(x=>String(x.id)===id);return t?(t.members||[]):[]}if(v.startsWith('emp:'))return[v.split(':')[1]];return[];}
+function getTeamCalTeamName(){const v=document.getElementById('teamcal-filter').value;if(v.startsWith('team:')){const id=v.split(':')[1];const t=S.teams.find(x=>String(x.id)===id);return t?t.name:null;}return null;}
+function getEventsForTeamView(empName,date,filterTeamName){
+  // チーム指定時：そのチームに属する予定 + チーム未指定の個人予定を表示
+  let evs=S.events.filter(e=>e.employee_name===empName&&e.date===date);
+  if(filterTeamName){
+    evs=evs.filter(e=>e.team_name===filterTeamName||!e.team_name);
+  }
+  return evs;
+}
+function teamCalFilterChange(){S.teamCalSelectedDate=null;closeTeamDayPanel();renderTeamCal();}
+function renderTeamCal(){
+  buildEvLegend('team-cal-legend');
+  const y=S.teamCalYear,m=S.teamCalMonth;
+  const deadlines=getDeadlineDates();
+  document.getElementById('team-cal-label').textContent=`${y}年${m+1}月`;
+  const targets=getTeamCalTargets();
+  const dow=document.getElementById('team-cal-dow');dow.innerHTML='';
+  ['日','月','火','水','木','金','土'].forEach((d,i)=>{const el=document.createElement('div');el.className=`cal-dow ${['sun','wkd','wkd','wkd','wkd','wkd','sat'][i]}`;el.textContent=d;dow.appendChild(el);});
+  const grid=document.getElementById('team-cal-grid');grid.innerHTML='';
+  const firstDay=new Date(y,m,1).getDay();const daysInMonth=new Date(y,m+1,0).getDate();
+  for(let i=0;i<firstDay;i++){const el=document.createElement('div');el.className='cal-day empty';grid.appendChild(el);}
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dcl=dayClass(ds);const hol=isHoliday(ds);const isSel=S.teamCalSelectedDate===ds;
+    const dlProjs=deadlines[ds];
+    const el=document.createElement('div');
+    el.className=`cal-day ${dcl}${ds===today?' today':''}${isSel?' selected':''}${dlProjs?' has-deadline':''}`;
+    el.style.minHeight='80px';
+    const numEl=document.createElement('div');numEl.className='cal-day-num';numEl.textContent=d;el.appendChild(numEl);
+    if(hol){const hl=document.createElement('div');hl.className='holiday-label';hl.textContent=hol;el.appendChild(hl);}
+    if(dlProjs){dlProjs.forEach(pn=>{const dl=document.createElement('div');dl.className='deadline-label';dl.textContent='🔴 '+pn+' 締切';el.appendChild(dl);});}
+    let totalEvCount=0;
+    const filterTeamName=getTeamCalTeamName();
+    targets.forEach(empName=>{
+      const evs=getEventsForTeamView(empName,ds,filterTeamName);if(!evs.length)return;totalEvCount+=evs.length;
+      const idx=Math.max(0,S.employees.findIndex(e=>e.name===empName))%AV_BG.length;
+      evs.slice(0,1).forEach(ev=>{const t=EV_TYPES[ev.type]||EV_TYPES.other;const teamMark=ev.team_name?'👥 ':'';const e=document.createElement('div');e.className='cal-event';e.style.cssText=`background:${ev.team_name?t.bg:'#F5F5F5'};color:${ev.team_name?t.tc:'#888'};${ev.team_name?`border-left:2px solid ${t.color};`:''}`;e.title=`${empName}: ${ev.title||t.label}${ev.team_name?' ['+ev.team_name+']':''}`;e.innerHTML=`<span style="display:inline-flex;align-items:center;gap:2px;"><span style="width:5px;height:5px;border-radius:50%;background:${AV_BG[idx]};flex-shrink:0;"></span>${teamMark}${targets.length>1?initials(empName)+': ':''}${ev.title||t.label}</span>`;el.appendChild(e);});
+    });
+    if(totalEvCount>2){const mm=document.createElement('div');mm.className='cal-more';mm.textContent=`全${totalEvCount}件 →`;el.appendChild(mm);}
+    el.addEventListener('click',()=>selectTeamDay(ds,targets));grid.appendChild(el);
+  }
+}
+function teamCalMove(dir){S.teamCalMonth+=dir;if(S.teamCalMonth>11){S.teamCalMonth=0;S.teamCalYear++;}if(S.teamCalMonth<0){S.teamCalMonth=11;S.teamCalYear--;}S.teamCalSelectedDate=null;closeTeamDayPanel();renderTeamCal();}
+function selectTeamDay(ds,targets){
+  S.teamCalSelectedDate=ds;renderTeamCal();
+  const panel=document.getElementById('team-day-panel');
+  const deadlines=getDeadlineDates();const dlProjs=deadlines[ds];
+  const hol=isHoliday(ds);let title=fmtDate(ds);
+  if(hol)title+=` 【${hol}】`;
+  if(dlProjs)title+=` 🔴 工期締切: ${dlProjs.join(', ')}`;
+  document.getElementById('team-day-panel-title').textContent=title;
+  const contentEl=document.getElementById('team-day-content');contentEl.innerHTML='';
+  if(dlProjs){
+    const dlBanner=document.createElement('div');
+    dlBanner.style.cssText='background:#FFEBEB;border:1.5px solid #E74C3C;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#A32D2D;font-weight:600;';
+    dlBanner.textContent='🔴 工期締切: '+dlProjs.join('、');
+    contentEl.appendChild(dlBanner);
+  }
+  const ftName=getTeamCalTeamName();
+  targets.forEach(empName=>{
+    const evs=getEventsForTeamView(empName,ds,ftName);const empIdx=Math.max(0,S.employees.findIndex(e=>e.name===empName))%AV_BG.length;
+    const sec=document.createElement('div');sec.className='member-section';
+    const header=document.createElement('div');header.className='member-header-row';
+    header.innerHTML=`<span class="avatar" style="background:${AV_BG[empIdx]};color:${AV_TX[empIdx]};width:26px;height:26px;font-size:11px;">${initials(empName)}</span><span class="member-name">${empName}</span><span style="font-size:12px;color:var(--text2);margin-left:auto;">${evs.length}件の予定</span>`;
+    sec.appendChild(header);
+    if(!evs.length){const noEv=document.createElement('div');noEv.className='member-no-ev';noEv.textContent='予定なし';sec.appendChild(noEv);}
+    else{evs.forEach(ev=>{const t=EV_TYPES[ev.type]||EV_TYPES.other;const item=document.createElement('div');item.className='ev-detail-item';item.style.borderLeftColor=t.color;item.style.background=t.bg;item.innerHTML=`<span class="event-dot" style="background:${t.color};margin-top:3px;flex-shrink:0;"></span><div class="ev-detail-body"><div style="font-size:13px;font-weight:600;">${ev.title||t.label} <span style="font-size:11px;font-weight:400;color:${t.tc};border:0.5px solid ${t.color};padding:1px 6px;border-radius:3px;">${t.label}</span></div>${(ev.start_time||ev.end_time)?`<div style="font-size:12px;color:var(--text2);margin-top:1px;">⏰ ${ev.start_time||''}${ev.end_time?'〜'+ev.end_time:''}</div>`:''}${ev.memo?`<div style="font-size:12px;color:var(--text2);">📝 ${ev.memo}</div>`:''}</div>`;sec.appendChild(item);});}
+    contentEl.appendChild(sec);
+  });
+  if(!targets.length)contentEl.innerHTML='<div class="msg">表示するメンバーがいません</div>';
+  panel.style.display='block';setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+}
+function closeTeamDayPanel(){S.teamCalSelectedDate=null;document.getElementById('team-day-panel').style.display='none';renderTeamCal();}
+
+// ===== 経費 =====
+function renderProjSelect(id){const sel=document.getElementById(id);if(!sel)return;sel.innerHTML='';S.projects.forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=p.name;sel.appendChild(o);});}
+async function submitExpense(){
+  const proj=document.getElementById('exp-proj').value;const cat=document.getElementById('exp-cat').value;
+  const amount=parseInt(document.getElementById('exp-amount').value)||0;const date=document.getElementById('exp-date').value;const note=document.getElementById('exp-note').value.trim();
+  if(!proj||!amount||!date){alert('案件・金額・日付は必須です');return;}
+  const{error}=await sb.from('expenses').insert({employee_name:currentUser.name,project_name:proj,category:cat,amount,date,note,status:'pending'});
+  if(!error){document.getElementById('exp-amount').value='';document.getElementById('exp-note').value='';document.getElementById('exp-date').value=today;const msg=document.getElementById('exp-success');msg.style.display='block';setTimeout(()=>msg.style.display='none',3000);await loadAllData();}
+  else{alert('保存エラー: '+error.message);}
+}
+function renderMyExpenses(){
+  const el=document.getElementById('my-expenses');if(!el||!currentUser.name)return;
+  const list=S.expenses.filter(e=>e.employee_name===currentUser.name);
+  if(!list.length){el.innerHTML='<div class="msg">申請履歴なし</div>';return;}
+  el.innerHTML='';
+  list.forEach(e=>{const col=CAT_COLOR[e.category]||'#888780';const badge=e.status==='approved'?'<span class="badge b-approved">承認済</span>':e.status==='rejected'?'<span class="badge b-rejected">却下</span>':'<span class="badge b-waiting">承認待ち</span>';el.innerHTML+=`<div class="exp-card"><div class="exp-header"><div><span style="font-size:13px;font-weight:600;">${e.note||e.category}</span><div class="exp-meta">${e.date} / ${e.project_name} / <span style="display:inline-flex;align-items:center;"><span class="category-dot" style="background:${col};"></span>${e.category}</span></div></div><div>${badge}</div></div><div class="exp-amount">¥${fmt(e.amount)}</div></div>`;});
+}
+function renderApprove(){
+  const pending=S.expenses.filter(e=>e.status==='pending');const decided=S.expenses.filter(e=>e.status!=='pending');
+  document.getElementById('approve-stats').innerHTML=`<div class="stat"><div class="stat-num" style="color:var(--amber);">${pending.length}</div><div class="stat-lbl">承認待ち</div></div><div class="stat"><div class="stat-num" style="color:var(--green);">${S.expenses.filter(e=>e.status==='approved').length}</div><div class="stat-lbl">承認済み</div></div><div class="stat"><div class="stat-num" style="color:var(--red);">${S.expenses.filter(e=>e.status==='rejected').length}</div><div class="stat-lbl">却下済み</div></div><div class="stat"><div class="stat-num" style="color:var(--purple);">¥${fmt(S.expenses.filter(e=>e.status==='approved').reduce((s,e)=>s+e.amount,0))}</div><div class="stat-lbl">承認済み合計</div></div>`;
+  const pe=document.getElementById('pending-list');pe.innerHTML=pending.length?'':'<div class="msg">承認待ちなし</div>';
+  pending.forEach(e=>{const col=CAT_COLOR[e.category]||'#888780';pe.innerHTML+=`<div class="exp-card"><div class="exp-header"><div><span style="font-size:13px;font-weight:600;">${e.note||e.category}</span><div class="exp-meta">${e.employee_name} / ${e.date} / ${e.project_name} / <span style="display:inline-flex;align-items:center;"><span class="category-dot" style="background:${col};"></span>${e.category}</span></div></div><div class="exp-amount">¥${fmt(e.amount)}</div></div><div class="exp-actions"><button class="btn-approve" onclick="decideExp('${e.id}','approved')">承認</button><button class="btn-reject" onclick="decideExp('${e.id}','rejected')">却下</button></div></div>`;});
+  const de=document.getElementById('decided-list');de.innerHTML=decided.length?'':'<div class="msg">まだありません</div>';
+  decided.forEach(e=>{const col=CAT_COLOR[e.category]||'#888780';const badge=e.status==='approved'?'<span class="badge b-approved">承認済</span>':'<span class="badge b-rejected">却下</span>';de.innerHTML+=`<div class="exp-card"><div class="exp-header"><div><span style="font-size:13px;font-weight:600;">${e.note||e.category}</span><div class="exp-meta">${e.employee_name} / ${e.date} / ${e.project_name}</div></div><div>${badge}<div class="exp-amount" style="text-align:right;">¥${fmt(e.amount)}</div></div></div></div>`;});
+}
+async function decideExp(id,status){const{error}=await sb.from('expenses').update({status}).eq('id',id);if(!error){await loadAllData();renderApprove();}else{alert('更新エラー');}}
+
+// ===== 管理者：勤怠 =====
+function renderAdmin(){
+  const filterEmp=document.getElementById('admin-emp-filter')?document.getElementById('admin-emp-filter').value:'__all__';
+  let submitted=0,totalCost=0;
+  S.employees.forEach(emp=>{const rec=getAtt(emp.name,today);if(rec.submitted)submitted++;if(rec.submitted)(rec.work||[]).forEach(w=>{totalCost+=calcCost(emp.name,w.hours);});});
+  document.getElementById('s-present').textContent=submitted;
+  document.getElementById('s-pending').textContent=S.employees.length-submitted;
+  document.getElementById('s-todaycost').textContent='¥'+fmt(totalCost);
+  document.getElementById('s-exp-pending').textContent=S.expenses.filter(e=>e.status==='pending').length;
+  const dispEmps=filterEmp==='__all__'?S.employees:S.employees.filter(e=>e.name===filterEmp);
+  document.getElementById('att-table-title').textContent=filterEmp==='__all__'?'業務提出状況':`業務提出状況（${filterEmp}）`;
+  const tbody=document.getElementById('att-table');tbody.innerHTML='';
+  dispEmps.forEach(emp=>{
+    const rec=getAtt(emp.name,today);const work=rec.work||[];
+    const dc=rec.submitted?work.reduce((s,w)=>s+calcCost(emp.name,w.hours),0):0;
+    const badge=rec.submitted?'<span class="badge b-in">提出済</span>':'<span class="badge b-none">未提出</span>';
+    const isSel=filterEmp!=='__all__';
+    const workSummary=work.map(w=>`${w.project}(${w.start||''}〜${w.end||''} ${w.hours}h)`).join(', ')||'--';
+    tbody.innerHTML+=`<tr${isSel?' class="highlight-row"':''}><td style="font-weight:${isSel?'600':'400'};">${emp.name}</td><td>${badge}</td><td>¥${fmt(emp.rate||0)}/h</td><td>${rec.submitted?'¥'+fmt(dc):'--'}</td><td style="font-size:12px;color:var(--text2);">${workSummary}</td></tr>`;
+  });
+  document.getElementById('alloc-title').textContent=filterEmp==='__all__'?'案件別 人員配置':`案件別 人員配置（${filterEmp}）`;
+  const projMap={};S.projects.forEach(p=>projMap[p.name]={emps:[],totalH:0,totalCost:0});
+  dispEmps.forEach(emp=>{const rec=getAtt(emp.name,today);if(rec.submitted){(rec.work||[]).forEach(w=>{if(!projMap[w.project])projMap[w.project]={emps:[],totalH:0,totalCost:0};const c=calcCost(emp.name,w.hours);projMap[w.project].emps.push({name:emp.name,hours:w.hours,cost:c});projMap[w.project].totalH+=w.hours;projMap[w.project].totalCost+=c;});}});
+  const alloc=document.getElementById('alloc-area');alloc.innerHTML='';let hasData=false;
+  S.projects.forEach((proj,pi)=>{const d=projMap[proj.name];if(!d||!d.emps.length)return;hasData=true;const chips=d.emps.map(e=>{const idx=Math.max(0,S.employees.findIndex(x=>x.name===e.name))%AV_BG.length;return `<span class="emp-chip"><span class="avatar" style="background:${AV_BG[idx]};color:${AV_TX[idx]};">${initials(e.name)}</span>${e.name}（${e.hours}h）</span>`;}).join('');alloc.innerHTML+=`<div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;font-weight:600;">${proj.name}</span><span style="font-size:12px;color:var(--text2);">${d.totalH.toFixed(1)}h / ¥${fmt(d.totalCost)}</span></div><div>${chips}</div></div>`;});
+  if(!hasData)alloc.innerHTML='<div class="msg">業務提出データなし</div>';
+}
+
+// ===== コスト =====
+function getMonthlyProjCost(ym){const m={};S.projects.forEach(p=>m[p.name]=0);S.attendance.filter(a=>a.date.startsWith(ym)&&a.submitted).forEach(a=>{(a.work||[]).forEach(w=>{if(!m[w.project])m[w.project]=0;m[w.project]+=calcCost(a.employee_name,w.hours);});});return m;}
+function renderCost(){
+  const ym=today.slice(0,7);const plc=getMonthlyProjCost(ym);
+  const ebp={};S.projects.forEach(p=>ebp[p.name]=0);S.expenses.filter(e=>e.status==='approved'&&e.date.startsWith(ym)).forEach(e=>{if(!ebp[e.project_name])ebp[e.project_name]=0;ebp[e.project_name]+=e.amount;});
+  let tB=0,tL=0,tE=0;S.projects.forEach(p=>{tB+=p.budget||0;tL+=plc[p.name]||0;tE+=ebp[p.name]||0;});
+  const tA=tL+tE;const rem=tB-tA;const pct=tB>0?Math.round(tA/tB*100):0;
+  document.getElementById('cost-summary').innerHTML=`<div class="stat"><div class="stat-num" style="color:var(--blue);">¥${fmt(tB)}</div><div class="stat-lbl">総予算</div></div><div class="stat"><div class="stat-num" style="color:var(--purple);">¥${fmt(tL)}</div><div class="stat-lbl">人件費</div></div><div class="stat"><div class="stat-num" style="color:#D85A30;">¥${fmt(tE)}</div><div class="stat-lbl">経費</div></div><div class="stat"><div class="stat-num" style="color:${rem>=0?'var(--green)':'var(--red)'};">¥${fmt(Math.abs(rem))}</div><div class="stat-lbl">${rem>=0?'残予算':'予算超過'}</div></div><div class="stat"><div class="stat-num" style="color:${pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--blue)'};">${pct}%</div><div class="stat-lbl">消化率</div></div>`;
+  const dA=document.getElementById('deadline-alerts');dA.innerHTML='';S.projects.forEach(p=>{if(!p.deadline)return;const r=calcRemainingDays(p.deadline);if(r<0)dA.innerHTML+=`<div class="alert-row deadline-over">⚠️ 工期超過: ${p.name}（${Math.abs(r)}日超過）</div>`;else if(r<=14)dA.innerHTML+=`<div class="alert-row" style="background:var(--amber-bg);color:#633806;border:0.5px solid #FAC775;">⏰ 工期まで残り${r}日: ${p.name}</div>`;});
+  const cA=document.getElementById('cost-alerts');cA.innerHTML='';S.projects.forEach(p=>{const a=(plc[p.name]||0)+(ebp[p.name]||0);const pc=(p.budget||0)>0?a/p.budget*100:0;if(pc>=100)cA.innerHTML+=`<div class="alert-row alert-over">予算超過: ${p.name}</div>`;else if(pc>=80)cA.innerHTML+=`<div class="alert-row alert-warn">予算80%超: ${p.name}</div>`;});
+  const tb=document.getElementById('cost-table');tb.innerHTML='';
+  S.projects.forEach((p,i)=>{const l=plc[p.name]||0;const ex=ebp[p.name]||0;const a=l+ex;const rp=(p.budget||0)>0?a/p.budget*100:0;const bpc=Math.min(Math.round(rp),100);const bc=rp>=100?'#E24B4A':rp>=80?'#EF9F27':BAR_C[i%BAR_C.length];const cb=rp>=100?'<span class="badge b-over">超過</span>':rp>=80?'<span class="badge b-warn">注意</span>':'<span class="badge b-ok">正常</span>';const r=calcRemainingDays(p.deadline);const dc=p.deadline||'<span style="color:var(--text3);">未設定</span>';const rc=p.deadline?(r<0?`<span style="color:var(--red);font-weight:600;">${Math.abs(r)}日超過</span>`:r<=14?`<span style="color:var(--amber);font-weight:600;">残${r}日</span>`:`<span style="color:var(--green);">残${r}日</span>`):'--';tb.innerHTML+=`<tr><td style="font-weight:600;">${p.name}</td><td>${p.client||'-'}</td><td>${dc}</td><td>${rc}</td><td>${p.checker||'-'}</td><td>${p.manager||'-'}</td><td>${p.staff||'-'}</td><td>¥${fmt(p.budget||0)}</td><td>¥${fmt(l)}</td><td>¥${fmt(ex)}</td><td style="font-weight:600;">¥${fmt(a)}</td><td>${cb}<div class="cost-meter" style="margin-top:4px;"><div class="bar-wrap"><div class="bar-fill" style="width:${bpc}%;background:${bc};"></div></div><span class="cost-pct">${Math.round(rp)}%</span></div></td></tr>`;});
+  const ec=document.getElementById('emp-cost-table');ec.innerHTML='';
+  S.employees.forEach((emp,i)=>{let h=0;S.attendance.filter(a=>a.employee_name===emp.name&&a.date.startsWith(ym)&&a.submitted).forEach(a=>{(a.work||[]).forEach(w=>h+=w.hours);});const labor=calcCost(emp.name,h);const exp=S.expenses.filter(e=>e.employee_name===emp.name&&e.status==='approved'&&e.date.startsWith(ym)).reduce((s,e)=>s+e.amount,0);const idx=i%AV_BG.length;ec.innerHTML+=`<tr><td><span class="emp-chip" style="background:none;border:none;padding:0;"><span class="avatar" style="background:${AV_BG[idx]};color:${AV_TX[idx]};">${initials(emp.name)}</span> ${emp.name}</span></td><td>¥${fmt(emp.rate||0)}/h</td><td>${h.toFixed(1)}h</td><td>¥${fmt(labor)}</td><td>¥${fmt(exp)}</td><td style="font-weight:600;">¥${fmt(labor+exp)}</td></tr>`;});
+}
+function renderMonthly(){
+  const ym=document.getElementById('m-month').value;const fe=document.getElementById('m-emp').value;
+  const targets=fe==='__all__'?S.employees.map(e=>e.name):[fe];
+  let totalH=0,totalDays=new Set(),totalLabor=0;const projMap={};S.projects.forEach(p=>projMap[p.name]={h:0,labor:0,exp:0});
+  S.attendance.filter(a=>a.date.startsWith(ym)&&a.submitted&&targets.includes(a.employee_name)).forEach(a=>{totalDays.add(a.date);(a.work||[]).forEach(w=>{const c=calcCost(a.employee_name,w.hours);totalH+=w.hours;totalLabor+=c;if(!projMap[w.project])projMap[w.project]={h:0,labor:0,exp:0};projMap[w.project].h+=w.hours;projMap[w.project].labor+=c;});});
+  const fExp=S.expenses.filter(e=>e.status==='approved'&&e.date.startsWith(ym)&&(fe==='__all__'||e.employee_name===fe));
+  let totalExp=0;fExp.forEach(e=>{totalExp+=e.amount;if(!projMap[e.project_name])projMap[e.project_name]={h:0,labor:0,exp:0};projMap[e.project_name].exp+=e.amount;});
+  document.getElementById('monthly-stats').innerHTML=`<div class="stat"><div class="stat-num">${totalDays.size}<span style="font-size:13px;color:var(--text2);"> 日</span></div><div class="stat-lbl">稼働日数</div></div><div class="stat"><div class="stat-num">${totalH.toFixed(1)}<span style="font-size:13px;color:var(--text2);"> h</span></div><div class="stat-lbl">総稼働時間</div></div><div class="stat"><div class="stat-num" style="color:var(--purple);">¥${fmt(totalLabor)}</div><div class="stat-lbl">人件費</div></div><div class="stat"><div class="stat-num" style="color:#D85A30;">¥${fmt(totalExp)}</div><div class="stat-lbl">経費</div></div><div class="stat"><div class="stat-num" style="color:var(--blue);">¥${fmt(totalLabor+totalExp)}</div><div class="stat-lbl">合計コスト</div></div>`;
+  let empRows='';targets.forEach(empName=>{let h=0;const days=new Set();S.attendance.filter(a=>a.employee_name===empName&&a.date.startsWith(ym)&&a.submitted).forEach(a=>{days.add(a.date);(a.work||[]).forEach(w=>h+=w.hours);});const labor=calcCost(empName,h);const exp=S.expenses.filter(e=>e.employee_name===empName&&e.status==='approved'&&e.date.startsWith(ym)).reduce((s,e)=>s+e.amount,0);if(h===0&&exp===0)return;const idx=Math.max(0,S.employees.findIndex(e=>e.name===empName))%AV_BG.length;empRows+=`<tr><td><span class="emp-chip" style="background:none;border:none;padding:0;"><span class="avatar" style="background:${AV_BG[idx]};color:${AV_TX[idx]};">${initials(empName)}</span> ${empName}</span></td><td>${days.size}日</td><td>${h.toFixed(1)}h</td><td>¥${fmt(labor)}</td><td>¥${fmt(exp)}</td><td style="font-weight:600;">¥${fmt(labor+exp)}</td></tr>`;});
+  document.getElementById('monthly-emp-table').innerHTML=empRows?`<div class="table-wrap"><table><thead><tr><th>社員名</th><th>稼働日数</th><th>稼働時間</th><th>人件費</th><th>経費</th><th>合計</th></tr></thead><tbody>${empRows}</tbody></table></div>`:'<div class="msg">データなし</div>';
+  let projRows='';S.projects.forEach((p,i)=>{const d=projMap[p.name]||{h:0,labor:0,exp:0};if(d.h===0&&d.exp===0)return;const a=d.labor+d.exp;const bp=(p.budget||0)>0?Math.round(a/p.budget*100):0;const badge=bp>=100?'<span class="badge b-over">超過</span>':bp>=80?'<span class="badge b-warn">注意</span>':'<span class="badge b-ok">正常</span>';projRows+=`<tr><td>${p.name}</td><td>${p.client||'-'}</td><td>${d.h.toFixed(1)}h</td><td>¥${fmt(d.labor)}</td><td>¥${fmt(d.exp)}</td><td style="font-weight:600;">¥${fmt(a)}</td><td>¥${fmt(p.budget||0)}</td><td>${badge} ${bp}%</td></tr>`;});
+  document.getElementById('monthly-proj-table').innerHTML=projRows?`<div class="table-wrap"><table><thead><tr><th>案件名</th><th>発注者</th><th>稼働時間</th><th>人件費</th><th>経費</th><th>合計実績</th><th>予算</th><th>消化率</th></tr></thead><tbody>${projRows}</tbody></table></div>`:'<div class="msg">データなし</div>';
+  let expRows='';fExp.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).forEach(e=>{const col=CAT_COLOR[e.category]||'#888780';expRows+=`<tr><td>${e.date}</td><td>${e.employee_name}</td><td>${e.project_name}</td><td><span style="display:inline-flex;align-items:center;"><span class="category-dot" style="background:${col};"></span>${e.category}</span></td><td>${e.note||'--'}</td><td style="font-weight:600;">¥${fmt(e.amount)}</td></tr>`;});
+  document.getElementById('monthly-exp-table').innerHTML=expRows?`<div class="table-wrap"><table><thead><tr><th>日付</th><th>社員</th><th>案件</th><th>カテゴリ</th><th>内容</th><th>金額</th></tr></thead><tbody>${expRows}</tbody></table></div>`:'<div class="msg">承認済み経費なし</div>';
+}
+
+// ===== 設定 =====
+function renderEmpSelect(id,all=false){const sel=document.getElementById(id);if(!sel)return;const cur=sel.value;sel.innerHTML=all?'<option value="__all__">全社員</option>':'<option value="">-- 選択してください --</option>';S.employees.forEach(e=>{const o=document.createElement('option');o.value=e.name;o.textContent=e.name;if(e.name===cur)o.selected=true;sel.appendChild(o);});}
+function renderEmpRateTable(){
+  const tb=document.getElementById('emp-rate-table');if(!tb)return;tb.innerHTML='';
+  if(!S.employees.length){tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text2);padding:12px;">社員が登録されていません</td></tr>';return;}
+  S.employees.forEach((e,i)=>{tb.innerHTML+=`<tr><td>${e.name}</td><td><input type="number" value="${e.rate||0}" min="0" step="100" style="width:90px;" onchange="updateEmp('${e.id}','rate',parseInt(this.value)||0)"/><span class="unit">円/h</span></td><td><input type="text" value="${e.password||''}" style="width:100px;" onchange="updateEmp('${e.id}','password',this.value)" placeholder="パスワード"/></td><td><button class="del-btn" onclick="removeEmp('${e.id}')">×</button></td></tr>`;});
+}
+async function updateEmp(id,field,value){await sb.from('employees').update({[field]:value}).eq('id',id);await loadAllData();}
+async function addEmp(){
+  const n=document.getElementById('new-emp').value.trim();const r=parseInt(document.getElementById('new-emp-rate').value)||0;const p=document.getElementById('new-emp-pass').value.trim();
+  if(!n)return;const{error}=await sb.from('employees').insert({name:n,rate:r,password:p});
+  if(!error){document.getElementById('new-emp').value='';document.getElementById('new-emp-rate').value='';document.getElementById('new-emp-pass').value='';await loadAllData();}
+  else{alert('追加エラー: '+error.message);}
+}
+async function removeEmp(id){if(!confirm('この社員を削除しますか？'))return;await sb.from('employees').delete().eq('id',id);await loadAllData();}
+function renderProjBudgetTable(){
+  const tb=document.getElementById('proj-budget-table');if(!tb)return;tb.innerHTML='';
+  S.projects.forEach((p,i)=>{
+    const r=calcRemainingDays(p.deadline);
+    const rt=p.deadline?(r<0?`<span style="color:var(--red);font-size:11px;font-weight:600;">${Math.abs(r)}日超過</span>`:r<=14?`<span style="color:var(--amber);font-size:11px;font-weight:600;">残${r}日</span>`:`<span style="color:var(--green);font-size:11px;">残${r}日</span>`):`<span style="color:var(--text3);font-size:11px;">未設定</span>`;
+    tb.innerHTML+=`<tr><td style="font-weight:500;white-space:nowrap;">${p.name}</td><td><input type="text" value="${p.client||''}" placeholder="発注者名" style="width:110px;" onchange="updateProj('${p.id}','client',this.value)"/></td><td><input type="number" value="${p.budget||0}" min="0" step="10000" style="width:100px;" onchange="updateProj('${p.id}','budget',parseInt(this.value)||0)"/><span class="unit">円</span></td><td><input type="date" value="${p.deadline||''}" style="width:135px;" onchange="updateProj('${p.id}','deadline',this.value)"/></td><td>${rt}</td><td><input type="text" value="${p.checker||''}" placeholder="照査" style="width:80px;" onchange="updateProj('${p.id}','checker',this.value)"/></td><td><input type="text" value="${p.manager||''}" placeholder="管理" style="width:80px;" onchange="updateProj('${p.id}','manager',this.value)"/></td><td><input type="text" value="${p.staff||''}" placeholder="担当" style="width:80px;" onchange="updateProj('${p.id}','staff',this.value)"/></td><td>${S.projects.length>1?`<button class="del-btn" onclick="removeProj('${p.id}')">×</button>`:''}</td></tr>`;
+  });
+}
+async function updateProj(id,field,value){await sb.from('projects').update({[field]:value}).eq('id',id);await loadAllData();renderProjBudgetTable();}
+async function addProj(){
+  const n=document.getElementById('new-proj').value.trim();if(!n)return;
+  const{error}=await sb.from('projects').insert({name:n,client:document.getElementById('new-proj-client').value.trim(),budget:parseInt(document.getElementById('new-proj-budget').value)||0,deadline:document.getElementById('new-proj-deadline').value,checker:document.getElementById('new-proj-checker').value.trim(),manager:document.getElementById('new-proj-manager').value.trim(),staff:document.getElementById('new-proj-staff').value.trim()});
+  if(!error){['new-proj','new-proj-client','new-proj-budget','new-proj-deadline','new-proj-checker','new-proj-manager','new-proj-staff'].forEach(id=>document.getElementById(id).value='');await loadAllData();}
+  else{alert('追加エラー: '+error.message);}
+}
+async function removeProj(id){if(!confirm('この案件を削除しますか？'))return;await sb.from('projects').delete().eq('id',id);await loadAllData();}
+function renderTeamList(){const el=document.getElementById('team-list');if(!el)return;if(!S.teams.length){el.innerHTML='<div class="msg" style="padding:0.5rem 0;">チームがまだありません</div>';return;}el.innerHTML='';S.teams.forEach(team=>{const members=team.members||[];const chips=members.map(m=>{const idx=Math.max(0,S.employees.findIndex(e=>e.name===m))%AV_BG.length;return `<span class="member-tag"><span class="avatar" style="background:${AV_BG[idx]};color:${AV_TX[idx]};">${initials(m)}</span>${m}</span>`;}).join('');el.innerHTML+=`<div class="team-card"><div class="team-hdr"><span class="team-name">${team.name}</span><button class="btn-sm" style="background:var(--red-bg);color:var(--red);border-color:#F09595;" onclick="removeTeam('${team.id}')">削除</button></div><div class="team-members">${chips||'<span style="font-size:12px;color:var(--text2);">メンバーなし</span>'}</div></div>`;});}
+function renderNewTeamMemberSelect(){const sel=document.getElementById('new-team-members');if(!sel)return;sel.innerHTML='';S.employees.forEach(e=>{const o=document.createElement('option');o.value=e.name;o.textContent=e.name;sel.appendChild(o);});}
+async function addTeam(){
+  const name=document.getElementById('new-team-name').value.trim();const sel=document.getElementById('new-team-members');const members=Array.from(sel.selectedOptions).map(o=>o.value);
+  if(!name){alert('チーム名を入力してください');return;}if(!members.length){alert('メンバーを1人以上選択してください');return;}
+  const{error}=await sb.from('teams').insert({name,members});
+  if(!error){document.getElementById('new-team-name').value='';Array.from(sel.options).forEach(o=>o.selected=false);await loadAllData();}
+  else{alert('追加エラー: '+error.message);}
+}
+async function removeTeam(id){if(!confirm('このチームを削除しますか？'))return;await sb.from('teams').delete().eq('id',id);await loadAllData();}
+function changeAdminPass(){const v=document.getElementById('new-admin-pass').value.trim();if(!v)return;adminPassword=v;document.getElementById('new-admin-pass').value='';const msg=document.getElementById('pass-msg');msg.style.display='block';setTimeout(()=>msg.style.display='none',3000);}
+
+// ===== CSV =====
+function exportCSV(type){
+  let rows=[],filename='';
+  if(type==='daily'){
+    filename=`業務_${today}.csv`;rows.push(['社員名','単価(円/h)','案件名','開始','終了','時間(h)','人件費(円)','状態']);
+    S.employees.forEach(emp=>{const rec=getAtt(emp.name,today);const work=rec.work||[];if(work.length){work.forEach(w=>rows.push([emp.name,emp.rate||0,w.project,w.start||'',w.end||'',w.hours,calcCost(emp.name,w.hours),rec.submitted?'提出済':'未提出']));}else{rows.push([emp.name,emp.rate||0,'','','','','',rec.submitted?'提出済':'未提出']);}});
+  }else{
+    const ym=document.getElementById('m-month').value;const fe=document.getElementById('m-emp').value;
+    filename=`月次集計_${ym}.csv`;rows.push(['種別','日付','社員名','案件名','発注者','開始','終了','時間(h)','金額(円)']);
+    const targets=fe==='__all__'?S.employees.map(e=>e.name):[fe];
+    S.attendance.filter(a=>a.date.startsWith(ym)&&a.submitted&&targets.includes(a.employee_name)).sort((a,b)=>a.date.localeCompare(b.date)).forEach(a=>{(a.work||[]).forEach(w=>{const proj=S.projects.find(p=>p.name===w.project);rows.push(['人件費',a.date,a.employee_name,w.project,proj?proj.client:'',w.start||'',w.end||'',w.hours,calcCost(a.employee_name,w.hours)]);});});
+    S.expenses.filter(e=>e.status==='approved'&&e.date.startsWith(ym)&&(fe==='__all__'||e.employee_name===fe)).forEach(e=>{const proj=S.projects.find(p=>p.name===e.project_name);rows.push(['経費',e.date,e.employee_name,e.project_name,proj?proj.client:'','','','--',e.amount]);});
+  }
+  const bom='\uFEFF';const csv=bom+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);
+}
+
+// 初期化
+initEvTypeSelect();
+(async()=>{try{const{data}=await sb.from('employees').select('name').order('name');if(data){S.employees=data;rebuildLoginEmpSel();}}catch(e){console.error(e);}})();
+</script>
+</body>
+</html>
